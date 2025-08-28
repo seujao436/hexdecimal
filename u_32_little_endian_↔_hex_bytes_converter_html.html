@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>U32 Little‑Endian ↔ Hex Bytes Converter</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#111824; --ink:#e9f0fb; --muted:#9bb0c9; --accent:#43b0ff; --bad:#ff6b6b; --ok:#41d392;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0; font:16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial; color:var(--ink); background:linear-gradient(180deg,#0b0f14 0%,#0d1220 100%);}    
+    .wrap{max-width:980px; margin:32px auto; padding:0 16px}
+    h1{font-size:clamp(20px,4vw,28px); margin:0 0 18px; letter-spacing:.2px}
+    p.lead{color:var(--muted); margin:0 0 22px}
+    .grid{display:grid; grid-template-columns:1fr; gap:16px}
+    @media(min-width:760px){ .grid{grid-template-columns:1fr 1fr} }
+    .card{background:var(--card); border:1px solid #1d2736; border-radius:16px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .card h2{font-size:18px; margin:0 0 12px}
+    label{display:block; font-size:13px; color:var(--muted); margin:4px 0 6px}
+    input[type=text], input[type=number]{
+      width:100%; padding:12px 14px; border-radius:12px; border:1px solid #223044; background:#0d1420; color:var(--ink);
+      outline:none; transition:border .2s, box-shadow .2s; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    input[type=text]:focus, input[type=number]:focus{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(67,176,255,.18)}
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .pill{font:12px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; background:#0d1420; border:1px solid #223044; color:var(--ink); padding:6px 10px; border-radius:999px}
+    .help{font-size:12px; color:var(--muted); margin-top:8px}
+    .out{margin-top:12px; background:#0c1522; border:1px dashed #23324a; border-radius:12px; padding:12px}
+    .kv{display:grid; grid-template-columns: 180px 1fr; gap:8px 14px; align-items:center}
+    .kv code{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+    .err{color:var(--bad)}
+    .ok{color:var(--ok)}
+    .footer{margin-top:24px; color:var(--muted); font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>U32 Little‑Endian ↔ Hex Bytes Converter</h1>
+    <p class="lead">Replica a lógica do seu print: <b>Hex (bytes)</b> → <b>U32 Little‑Endian (decimal)</b> e também o caminho inverso.</p>
+
+    <div class="grid">
+      <!-- HEX → DEC -->
+      <section class="card" id="hexCard">
+        <h2>HEX → Decimal (U32 • Little‑endian)</h2>
+        <label for="hexIn">Hex (8 dígitos, bytes em ordem mostrada)</label>
+        <input id="hexIn" type="text" placeholder="ex.: 701812A0" maxlength="16" spellcheck="false" autocomplete="off">
+        <div class="help">Aceita espaços, vírgulas e prefixo <span class="mono">0x</span>; será normalizado para 8 dígitos. Ex.: <span class="mono">70 18 12 A0</span>.</div>
+        <div class="out">
+          <div class="kv">
+            <div>Decimal (LE U32):</div><div><code id="decFromHex">—</code></div>
+            <div>Também em BE U32:</div><div><code id="decFromHexBE">—</code></div>
+            <div>Bytes (como lidos):</div><div><code id="bytesEcho">—</code></div>
+          </div>
+        </div>
+        <div class="help">No modo little‑endian o byte da direita em <span class="mono">AABBCCDD</span> é o mais significativo; o valor é <span class="mono">DD·256³ + CC·256² + BB·256¹ + AA</span>.</div>
+      </section>
+
+      <!-- DEC → HEX -->
+      <section class="card" id="decCard">
+        <h2>Decimal → HEX (bytes para LE U32)</h2>
+        <label for="decIn">Decimal sem sinal (0 a 4 294 967 295)</label>
+        <input id="decIn" type="number" min="0" max="4294967295" placeholder="ex.: 2685540464">
+        <div class="out">
+          <div class="kv">
+            <div>Hex p/ colar no campo de bytes:</div><div><code id="hexFromDec">—</code></div>
+            <div>Hex (valor BE convencional):</div><div><code id="hexBEFromDec">—</code></div>
+            <div>Bytes LE (LSB→MSB):</div><div><code id="bytesLEFromDec">—</code></div>
+          </div>
+        </div>
+        <div class="help">O primeiro hex acima ("para colar") já vem na ordem de <b>bytes</b> que, quando lida como <b>U32 little‑endian</b>, produz o decimal informado — igual ao seu print.</div>
+      </section>
+    </div>
+
+    <div class="footer">Dica: 2685540464 ⇆ 701812A0 • 2685840464 ⇆ A016AC50.</div>
+  </div>
+
+  <script>
+    const clampU32 = x => Math.max(0, Math.min(0xFFFFFFFF, Math.floor(Number(x))))
+    const toHex2 = b => b.toString(16).toUpperCase().padStart(2,'0')
+
+    function normalizeHex8(s){
+      if(!s) return null
+      s = String(s).replace(/0x/ig,'').replace(/[^0-9a-fA-F]/g,'')
+      if(s.length === 0) return null
+      if(s.length > 8) s = s.slice(-8) // mantém os 4 bytes finais
+      return s.padStart(8,'0').toUpperCase()
+    }
+
+    function hexToBytesBE(h){
+      const out = []
+      for(let i=0;i<h.length;i+=2) out.push(parseInt(h.slice(i,i+2),16))
+      return out
+    }
+
+    function bytesToDecLE(bs){
+      // sem operadores bitwise para evitar sinal
+      return bs[0] + bs[1]*256 + bs[2]*65536 + bs[3]*16777216
+    }
+
+    function bytesToDecBE(bs){
+      return bs[3] + bs[2]*256 + bs[1]*65536 + bs[0]*16777216
+    }
+
+    function decToBytesLE(n){
+      n = clampU32(n)
+      return [ n & 0xFF, (n>>>8) & 0xFF, (n>>>16) & 0xFF, (n>>>24) & 0xFF ]
+    }
+
+    function decToHexBE(n){
+      n = clampU32(n)
+      return n.toString(16).toUpperCase().padStart(8,'0')
+    }
+
+    // UI bindings
+    const hexIn = document.getElementById('hexIn')
+    const decIn = document.getElementById('decIn')
+
+    const decFromHex = document.getElementById('decFromHex')
+    const decFromHexBE = document.getElementById('decFromHexBE')
+    const bytesEcho = document.getElementById('bytesEcho')
+
+    const hexFromDec = document.getElementById('hexFromDec')
+    const hexBEFromDec = document.getElementById('hexBEFromDec')
+    const bytesLEFromDec = document.getElementById('bytesLEFromDec')
+
+    function onHexChange(){
+      const h = normalizeHex8(hexIn.value)
+      if(!h){ decFromHex.textContent = '—'; decFromHexBE.textContent='—'; bytesEcho.textContent='—'; return }
+      const bs = hexToBytesBE(h)
+      const decLE = bytesToDecLE(bs)
+      const decBE = bytesToDecBE(bs)
+      decFromHex.textContent = String(decLE)
+      decFromHexBE.textContent = String(decBE)
+      bytesEcho.textContent = bs.map(toHex2).join(' ')
+      // auto-preencher o outro campo
+      decIn.value = decLE
+      onDecChange()
+    }
+
+    function onDecChange(){
+      let n = decIn.value
+      if(n === '' || isNaN(n)){ hexFromDec.textContent='—'; hexBEFromDec.textContent='—'; bytesLEFromDec.textContent='—'; return }
+      n = clampU32(n)
+      decIn.value = n
+      const bytesLE = decToBytesLE(n)
+      const hexForBytesField = bytesLE.map(toHex2).join('')
+      const hexBE = decToHexBE(n)
+      hexFromDec.textContent = hexForBytesField
+      hexBEFromDec.textContent = hexBE
+      bytesLEFromDec.textContent = bytesLE.map(toHex2).join(' ')
+      // sincroniza o campo de hex (mostrando a ordem de bytes)
+      hexIn.value = hexForBytesField
+    }
+
+    hexIn.addEventListener('input', onHexChange)
+    decIn.addEventListener('input', onDecChange)
+
+    // exemplos prontos
+    hexIn.value = '701812A0'
+    onHexChange()
+  </script>
+</body>
+</html>
